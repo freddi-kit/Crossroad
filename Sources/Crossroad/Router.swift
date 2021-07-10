@@ -95,13 +95,53 @@ public final class Router<UserInfo> {
                 }
                 register(Route(pattern: patternURL, handler: handler))
             case .multiple(scheme: let scheme, url: let url):
-                guard let patternSchemeURL = PatternURL(string: generatePatternURLString(from: pattern, scheme: scheme)),
-                      let patternURL = PatternURL(string: generatePatternURLString(from: pattern, url: url)) else {
-                    assertionFailure("\(pattern) is invalid")
-                    continue
+                if let index = pattern.lowercased().range(of: "\(scheme)://".lowercased())?.upperBound {
+                    // If pattern is already custom scheme url,
+                    // registering current pattern and generated universal link url
+                    
+                    // 1. Registering current pattern
+                    guard let patternURL = PatternURL(string: canonicalizePattern(canonicalizePattern(pattern))) else {
+                        assertionFailure("\(pattern) is invalid")
+                        continue
+                    }
+                    register(Route(pattern: patternURL, handler: handler))
+                    
+                    // 2. Registering universal link pattern
+                    let path = generatePatternURLString(from: String(pattern.suffix(from: index)), url: url)
+                    guard let patternURL = PatternURL(string: canonicalizePattern(canonicalizePattern(path))) else {
+                        assertionFailure("\(pattern) is invalid")
+                        continue
+                    }
+                    register(Route(pattern: patternURL, handler: handler))
+                } else if let index = pattern.lowercased().range(of: url.absoluteString.lowercased())?.upperBound {
+                    // If pattern is already universal link url,
+                    // registering current pattern and generated custom scheme url
+                    
+                    // 1. Registering current pattern
+                    guard let patternURL = PatternURL(string: canonicalizePattern(canonicalizePattern(pattern))) else {
+                        assertionFailure("\(pattern) is invalid")
+                        continue
+                    }
+                    register(Route(pattern: patternURL, handler: handler))
+                    
+                    // 2. Registering custom scheme link pattern
+                    let path = generatePatternURLString(from: String(pattern.suffix(from: index)), scheme: scheme)
+                    guard let patternURL = PatternURL(string: canonicalizePattern(canonicalizePattern(path))) else {
+                        assertionFailure("\(pattern) is invalid")
+                        continue
+                    }
+                    register(Route(pattern: patternURL, handler: handler))
+                } else {
+                    // If pattern is not universal link url and custom scheme url,
+                    // generating universal link url and custom scheme url
+                    guard let patternSchemeURL = PatternURL(string: generatePatternURLString(from: pattern, scheme: scheme)),
+                          let patternURL = PatternURL(string: generatePatternURLString(from: pattern, url: url)) else {
+                        assertionFailure("\(pattern) is invalid")
+                        continue
+                    }
+                    register(Route(pattern: patternURL, handler: handler))
+                    register(Route(pattern: patternSchemeURL, handler: handler))
                 }
-                register(Route(pattern: patternURL, handler: handler))
-                register(Route(pattern: patternSchemeURL, handler: handler))
             }
         }
     }
