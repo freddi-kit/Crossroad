@@ -95,52 +95,55 @@ public final class Router<UserInfo> {
                 }
                 register(Route(pattern: universalLinkPatternURL, handler: handler))
             case .multiple(scheme: let scheme, url: let url):
-                if let index = pattern.lowercased().range(of: "\(scheme)://".lowercased())?.upperBound {
+                let normalizedPattern = pattern.lowercased()
+                if normalizedPattern.hasPrefix("\(scheme)://".lowercased()),
+                   let index = normalizedPattern.range(of: "\(scheme)://".lowercased())?.upperBound {
                     // If pattern is already custom scheme url,
                     // registering current pattern and generated universal link url
                     
                     // 1. Registering current pattern
-                    guard let patternURLFromScheme = PatternURL(string: canonicalizePattern(pattern)) else {
+                    guard let customSchemePatternURL = PatternURL(string: canonicalizePattern(pattern)) else {
                         assertionFailure("\(pattern) is invalid")
                         continue
                     }
                     
                     // 2. Registering universal link pattern
                     let path = createUniversalLinkURLString(from: String(pattern.suffix(from: index)), url: url)
-                    guard let patternURLFromUniversalLink = PatternURL(string: path) else {
+                    guard let universalLinkPatternURL = PatternURL(string: path) else {
                         assertionFailure("\(pattern) is invalid")
                         continue
                     }
-                    register(Route(pattern: patternURLFromScheme, handler: handler))
-                    register(Route(pattern: patternURLFromUniversalLink, handler: handler))
-                } else if let index = pattern.lowercased().range(of: url.absoluteString.lowercased())?.upperBound {
+                    register(Route(pattern: customSchemePatternURL, handler: handler))
+                    register(Route(pattern: universalLinkPatternURL, handler: handler))
+                } else if normalizedPattern.hasPrefix(url.absoluteString.lowercased()),
+                          let index = normalizedPattern.range(of: url.absoluteString.lowercased())?.upperBound {
                     // If pattern is already universal link url,
                     // registering current pattern and generated custom scheme url
                     
                     // 1. Registering current pattern
-                    guard let patternURLFromUniversalLink = PatternURL(string: canonicalizePattern(pattern)) else {
+                    guard let universalLinkPatternURL = PatternURL(string: canonicalizePattern(pattern)) else {
                         assertionFailure("\(pattern) is invalid")
                         continue
                     }
                     
                     // 2. Registering custom scheme link pattern
                     let path = createCustomSchemeURLString(from: String(pattern.suffix(from: index)), scheme: scheme)
-                    guard let patternURLFromScheme = PatternURL(string: path) else {
+                    guard let customSchemePatternURL = PatternURL(string: path) else {
                         assertionFailure("\(pattern) is invalid")
                         continue
                     }
-                    register(Route(pattern: patternURLFromScheme, handler: handler))
-                    register(Route(pattern: patternURLFromUniversalLink, handler: handler))
+                    register(Route(pattern: customSchemePatternURL, handler: handler))
+                    register(Route(pattern: universalLinkPatternURL, handler: handler))
                 } else {
                     // If pattern is not universal link url and custom scheme url,
                     // generating universal link url and custom scheme url
-                    guard let patternSchemeURL = PatternURL(string: createCustomSchemeURLString(from: pattern, scheme: scheme)),
-                          let patternURL = PatternURL(string: createUniversalLinkURLString(from: pattern, url: url)) else {
+                    guard let customSchemePatternURL = PatternURL(string: createCustomSchemeURLString(from: pattern, scheme: scheme)),
+                          let universalLinkPatternURL = PatternURL(string: createUniversalLinkURLString(from: pattern, url: url)) else {
                         assertionFailure("\(pattern) is invalid")
                         continue
                     }
-                    register(Route(pattern: patternURL, handler: handler))
-                    register(Route(pattern: patternSchemeURL, handler: handler))
+                    register(Route(pattern: customSchemePatternURL, handler: handler))
+                    register(Route(pattern: universalLinkPatternURL, handler: handler))
                 }
             }
         }
