@@ -100,37 +100,37 @@ public final class Router<UserInfo> {
                     // registering current pattern and generated universal link url
                     
                     // 1. Registering current pattern
-                    guard let patternURL = PatternURL(string: canonicalizePattern(canonicalizePattern(pattern))) else {
+                    guard let patternURLFromScheme = PatternURL(string: canonicalizePattern(pattern)) else {
                         assertionFailure("\(pattern) is invalid")
                         continue
                     }
-                    register(Route(pattern: patternURL, handler: handler))
                     
                     // 2. Registering universal link pattern
                     let path = generatePatternURLString(from: String(pattern.suffix(from: index)), url: url)
-                    guard let patternURL = PatternURL(string: canonicalizePattern(canonicalizePattern(path))) else {
+                    guard let patternURLFromUniversalLink = PatternURL(string: path) else {
                         assertionFailure("\(pattern) is invalid")
                         continue
                     }
-                    register(Route(pattern: patternURL, handler: handler))
+                    register(Route(pattern: patternURLFromScheme, handler: handler))
+                    register(Route(pattern: patternURLFromUniversalLink, handler: handler))
                 } else if let index = pattern.lowercased().range(of: url.absoluteString.lowercased())?.upperBound {
                     // If pattern is already universal link url,
                     // registering current pattern and generated custom scheme url
                     
                     // 1. Registering current pattern
-                    guard let patternURL = PatternURL(string: canonicalizePattern(canonicalizePattern(pattern))) else {
+                    guard let patternURLFromUniversalLink = PatternURL(string: canonicalizePattern(pattern)) else {
                         assertionFailure("\(pattern) is invalid")
                         continue
                     }
-                    register(Route(pattern: patternURL, handler: handler))
                     
                     // 2. Registering custom scheme link pattern
                     let path = generatePatternURLString(from: String(pattern.suffix(from: index)), scheme: scheme)
-                    guard let patternURL = PatternURL(string: canonicalizePattern(canonicalizePattern(path))) else {
+                    guard let patternURLFromScheme = PatternURL(string: path) else {
                         assertionFailure("\(pattern) is invalid")
                         continue
                     }
-                    register(Route(pattern: patternURL, handler: handler))
+                    register(Route(pattern: patternURLFromScheme, handler: handler))
+                    register(Route(pattern: patternURLFromUniversalLink, handler: handler))
                 } else {
                     // If pattern is not universal link url and custom scheme url,
                     // generating universal link url and custom scheme url
