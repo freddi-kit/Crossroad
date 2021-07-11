@@ -62,7 +62,7 @@ public final class Router<UserInfo> {
         }
         return pattern
     }
-    
+
     private func createCustomSchemeURLString(from pattern: String, scheme: String) -> String {
         if pattern.lowercased().hasPrefix("\(scheme)://") {
             return canonicalizePattern(pattern)
@@ -77,6 +77,11 @@ public final class Router<UserInfo> {
         } else {
             return url.appendingPathComponent(canonicalizePattern(pattern)).absoluteString
         }
+    }
+    
+    private func upperBound(of pattern: String, prefix: String) -> String.Index? {
+        // Returns upperBound of range if pattern starts from passed prefix
+        return pattern.hasPrefix(prefix) ? pattern.range(of: prefix)?.upperBound : nil
     }
 
     public func register(_ routes: [(String, Route<UserInfo>.Handler)]) {
@@ -96,10 +101,12 @@ public final class Router<UserInfo> {
                 register(Route(pattern: universalLinkPatternURL, handler: handler))
             case .multiple(scheme: let scheme, url: let url):
                 let normalizedPattern = pattern.lowercased()
-                if normalizedPattern.hasPrefix("\(scheme)://".lowercased()),
-                   let index = normalizedPattern.range(of: "\(scheme)://".lowercased())?.upperBound {
-                    // If pattern is already custom scheme url,
-                    // registering current pattern and generated universal link url
+                let normarlizedCustomScheme = "\(scheme)://".lowercased()
+                let normarlizedUniversalLinkPrefix = url.absoluteString.lowercased()
+
+                if let index = upperBound(of: normalizedPattern, prefix: normarlizedCustomScheme) {
+                    // If pattern is already custom scheme url, (e.g. foobar://:keyword)
+                    // registering current custom scheme pattern and generated universal link url
                     
                     // 1. Registering current pattern
                     guard let customSchemePatternURL = PatternURL(string: canonicalizePattern(pattern)) else {
@@ -115,10 +122,9 @@ public final class Router<UserInfo> {
                     }
                     register(Route(pattern: customSchemePatternURL, handler: handler))
                     register(Route(pattern: universalLinkPatternURL, handler: handler))
-                } else if normalizedPattern.hasPrefix(url.absoluteString.lowercased()),
-                          let index = normalizedPattern.range(of: url.absoluteString.lowercased())?.upperBound {
-                    // If pattern is already universal link url,
-                    // registering current pattern and generated custom scheme url
+                } else if let index = upperBound(of: normalizedPattern, prefix: normarlizedUniversalLinkPrefix) {
+                    // If pattern is already universal link url,  (e.g. https://example.com/:keyword)
+                    // registering current universal link pattern and generated custom scheme url
                     
                     // 1. Registering current pattern
                     guard let universalLinkPatternURL = PatternURL(string: canonicalizePattern(pattern)) else {
@@ -135,7 +141,7 @@ public final class Router<UserInfo> {
                     register(Route(pattern: customSchemePatternURL, handler: handler))
                     register(Route(pattern: universalLinkPatternURL, handler: handler))
                 } else {
-                    // If pattern is not universal link url and custom scheme url,
+                    // If pattern is not universal link url and custom scheme url, (e.g. /:keyword)
                     // generating universal link url and custom scheme url
                     guard let customSchemePatternURL = PatternURL(string: createCustomSchemeURLString(from: pattern, scheme: scheme)),
                           let universalLinkPatternURL = PatternURL(string: createUniversalLinkURLString(from: pattern, url: url)) else {
